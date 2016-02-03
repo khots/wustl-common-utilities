@@ -11,6 +11,8 @@
 package edu.wustl.common.hibernate;
 
 import java.io.InputStream;
+import java.io.PrintStream;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +27,12 @@ import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.util.XMLHelper;
+import org.hibernate.internal.util.xml.XMLHelper;
+import org.hibernate.jdbc.ReturningWork;
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
+
+import edu.wustl.common.util.CommonErrorHandler;
 
 /**
  * Utility for creating a hibernate session-factory and managing thread-local
@@ -61,7 +66,7 @@ public class HibernateUtil {
 
     // Initialize the session Factory in the Static block.
     // Initialize the session Factory in the Static block.
-    private static final EntityResolver entityResolver = XMLHelper.DEFAULT_DTD_RESOLVER;
+    private static final EntityResolver entityResolver = org.hibernate.internal.util.xml.XMLHelper.DEFAULT_DTD_RESOLVER;
 
     private static final Configuration cfg;
 
@@ -122,7 +127,9 @@ public class HibernateUtil {
             // hibernate api to read configuration file and convert it to
             // Document(dom4j) object.
             XMLHelper xmlHelper = new XMLHelper();
-            Document document = xmlHelper.createSAXReader(fileName, errors, entityResolver).read(
+            PrintStream printStream = new PrintStream(System.err);
+            CommonErrorHandler errorHandler = new CommonErrorHandler(printStream);
+            Document document = xmlHelper.createSAXReader(errorHandler, entityResolver).read(
                     new InputSource(inputStream));
             // convert to w3c Document object.
             DOMWriter writer = new DOMWriter();
@@ -178,7 +185,14 @@ public class HibernateUtil {
         Session session = m_sessionFactory.openSession();
         session.setFlushMode(FlushMode.COMMIT);
         try {
-            session.connection().setAutoCommit(false);
+            Connection connection=session.doReturningWork(new ReturningWork<Connection>() 
+            {
+                @Override
+                public Connection execute(Connection conn) throws SQLException {
+                return conn;
+                }
+            });
+            connection.setAutoCommit(false);
         } catch (SQLException ex) {
             throw new HibernateException(ex.getMessage(), ex);
         }

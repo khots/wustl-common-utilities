@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.hibernate.EntityMode;
 import org.hibernate.SessionFactory;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.type.Type;
 
@@ -84,7 +85,7 @@ public class Metadata {
 
     public Object getValue(String name) {
         checkPresent();
-        return classMetadata.getPropertyValue(obj, name, ENTITY_MODE);
+        return classMetadata.getPropertyValue(obj, name);
     }
 
     public Type getType(String name) {
@@ -94,12 +95,13 @@ public class Metadata {
 
     public void setValue(String name, Object value) {
         checkPresent();
-        classMetadata.setPropertyValue(obj, name, value, ENTITY_MODE);
+        classMetadata.setPropertyValue(obj, name, value);
     }
 
     public void nullifyId() {
         checkPresent();
-        classMetadata.setIdentifier(obj, null, ENTITY_MODE);
+        SessionImplementor sessionImplementor = ((SessionImplementor) sessionFactory.getCurrentSession());
+        classMetadata.setIdentifier(obj, null, sessionImplementor);
     }
 
     public boolean present() {
